@@ -69,6 +69,8 @@ import org.opensearch.remote.metadata.client.DeleteDataObjectRequest;
 import org.opensearch.remote.metadata.client.DeleteDataObjectResponse;
 import org.opensearch.remote.metadata.client.GetDataObjectRequest;
 import org.opensearch.remote.metadata.client.GetDataObjectResponse;
+import org.opensearch.remote.metadata.client.MultiGetDataObjectRequest;
+import org.opensearch.remote.metadata.client.MultiGetDataObjectResponse;
 import org.opensearch.remote.metadata.client.PutDataObjectRequest;
 import org.opensearch.remote.metadata.client.PutDataObjectResponse;
 import org.opensearch.remote.metadata.client.SdkClient;
@@ -388,6 +390,15 @@ public class RemoteClusterIndicesClient extends AbstractSdkClient {
                 throw new OpenSearchStatusException("Failed to execute bulk request", RestStatus.INTERNAL_SERVER_ERROR, e);
             }
         });
+    }
+
+    @Override
+    public CompletionStage<MultiGetDataObjectResponse> multiGetDataObjectAsync(
+        MultiGetDataObjectRequest request,
+        Executor executor,
+        Boolean isMultiTenancyEnabled
+    ) {
+        throw new UnsupportedOperationException("Multi-get operation is currently not supported For Remote cluster client");
     }
 
     private void addBulkOperation(DataObjectRequest dataObjectRequest, List<BulkOperation> operations) {

@@ -260,6 +260,54 @@ public class SdkClient {
     }
 
     /**
+     * Retrieve multiple data objects/documents from tables/indices.
+     *
+     * @param request  A request identifying the data objects to retrieve
+     * @param executor the executor to use for asynchronous execution
+     * @return A completion stage encapsulating the response or exception
+     */
+    public CompletionStage<MultiGetDataObjectResponse> multiGetDataObjectAsync(MultiGetDataObjectRequest request, Executor executor) {
+        validateTenantIds(request);
+        return delegate.multiGetDataObjectAsync(request, executor, isMultiTenancyEnabled);
+    }
+
+    /**
+     * Retrieve multiple data objects/documents from tables/indices using the default executor.
+     *
+     * @param request A request identifying the data objects to retrieve
+     * @return A completion stage encapsulating the response or exception
+     */
+    public CompletionStage<MultiGetDataObjectResponse> multiGetDataObjectAsync(MultiGetDataObjectRequest request) {
+        return multiGetDataObjectAsync(request, defaultExecutor);
+    }
+
+    /**
+     * Retrieve multiple data objects/documents from tables/indices.
+     *
+     * @param request A request identifying the data objects to retrieve
+     * @return A response on success. Throws unchecked exceptions or {@link OpenSearchException} wrapping the cause on checked exception.
+     */
+    public MultiGetDataObjectResponse multiGetDataObject(MultiGetDataObjectRequest request) {
+        try {
+            return multiGetDataObjectAsync(request).toCompletableFuture().join();
+        } catch (CompletionException e) {
+            throw ExceptionsHelper.convertToRuntime(unwrapAndConvertToException(e));
+        }
+    }
+
+    private void validateTenantIds(MultiGetDataObjectRequest request) {
+        if (Boolean.TRUE.equals(isMultiTenancyEnabled)) {
+            for (GetDataObjectRequest req : request.requests()) {
+                if (Strings.isNullOrEmpty(req.tenantId())) {
+                    throw new IllegalArgumentException(
+                        "A tenant ID is required for every GetDataObjectRequest when multitenancy is enabled."
+                    );
+                }
+            }
+        }
+    }
+
+    /**
      * Get the delegate client implementation.
      * @return the delegate implementation
      */

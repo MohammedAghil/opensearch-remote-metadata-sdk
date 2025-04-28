@@ -16,6 +16,8 @@ import org.opensearch.action.DocWriteRequest.OpType;
 import org.opensearch.action.bulk.BulkRequest;
 import org.opensearch.action.delete.DeleteRequest;
 import org.opensearch.action.get.GetRequest;
+import org.opensearch.action.get.MultiGetItemResponse;
+import org.opensearch.action.get.MultiGetRequest;
 import org.opensearch.action.index.IndexRequest;
 import org.opensearch.action.search.SearchRequest;
 import org.opensearch.action.update.UpdateRequest;
@@ -35,10 +37,13 @@ import org.opensearch.remote.metadata.client.AbstractSdkClient;
 import org.opensearch.remote.metadata.client.BulkDataObjectRequest;
 import org.opensearch.remote.metadata.client.BulkDataObjectResponse;
 import org.opensearch.remote.metadata.client.DataObjectRequest;
+import org.opensearch.remote.metadata.client.DataObjectResponse;
 import org.opensearch.remote.metadata.client.DeleteDataObjectRequest;
 import org.opensearch.remote.metadata.client.DeleteDataObjectResponse;
 import org.opensearch.remote.metadata.client.GetDataObjectRequest;
 import org.opensearch.remote.metadata.client.GetDataObjectResponse;
+import org.opensearch.remote.metadata.client.MultiGetDataObjectRequest;
+import org.opensearch.remote.metadata.client.MultiGetDataObjectResponse;
 import org.opensearch.remote.metadata.client.PutDataObjectRequest;
 import org.opensearch.remote.metadata.client.PutDataObjectResponse;
 import org.opensearch.remote.metadata.client.SdkClient;
@@ -50,7 +55,9 @@ import org.opensearch.search.builder.SearchSourceBuilder;
 import org.opensearch.transport.client.Client;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -59,6 +66,7 @@ import java.util.concurrent.Executor;
 import static org.opensearch.action.support.WriteRequest.RefreshPolicy.IMMEDIATE;
 import static org.opensearch.common.util.concurrent.ThreadContextAccess.doPrivileged;
 import static org.opensearch.core.xcontent.ToXContent.EMPTY_PARAMS;
+import static org.opensearch.remote.metadata.common.SdkClientUtils.createParser;
 
 /**
  * An implementation of {@link SdkClient} that stores data in a local OpenSearch
@@ -162,6 +170,59 @@ public class LocalClusterIndicesClient extends AbstractSdkClient {
 
     private GetRequest createGetRequest(GetDataObjectRequest request) {
         return new GetRequest(request.index(), request.id()).fetchSourceContext(request.fetchSourceContext());
+    }
+
+    @Override
+    public CompletionStage<MultiGetDataObjectResponse> multiGetDataObjectAsync(
+        MultiGetDataObjectRequest request,
+        Executor executor,
+        Boolean isMultiTenancyEnabled
+    ) {
+        CompletableFuture<MultiGetDataObjectResponse> future = new CompletableFuture<>();
+        return doPrivileged(() -> {
+            MultiGetRequest multiGetRequest = new MultiGetRequest();
+            for (GetDataObjectRequest getRequest : request.requests()) {
+                multiGetRequest.add(new MultiGetRequest.Item(getRequest.index(), getRequest.id()));
+            }
+
+            client.multiGet(multiGetRequest, ActionListener.wrap(multiGetResponse -> {
+                try {
+                    List<DataObjectResponse> responses = new ArrayList<>();
+                    for (MultiGetItemResponse itemResponse : multiGetResponse.getResponses()) {
+                        GetDataObjectResponse response;
+                        if (itemResponse.isFailed()) {
+                            response = new GetDataObjectResponse.Builder().index(itemResponse.getIndex())
+                                .id(itemResponse.getId())
+                                .failed(true)
+                                .cause(itemResponse.getFailure().getFailure())
+                                .status(RestStatus.INTERNAL_SERVER_ERROR)
+                                .build();
+                        } else {
+                            response = GetDataObjectResponse.builder()
+                                .index(itemResponse.getResponse().getIndex())
+                                .id(itemResponse.getResponse().getId())
+                                .parser(createParser(itemResponse.getResponse()))
+                                .source(itemResponse.getResponse().getSource())
+                                .build();
+                        }
+                        responses.add(response);
+                    }
+
+                    future.complete(
+                        new MultiGetDataObjectResponse(responses.toArray(new DataObjectResponse[0]), createParser(multiGetResponse))
+                    );
+                } catch (IOException e) {
+                    future.completeExceptionally(
+                        new OpenSearchStatusException("Failed to parse multi-get response", RestStatus.INTERNAL_SERVER_ERROR, e)
+                    );
+                }
+            },
+                e -> future.completeExceptionally(
+                    new OpenSearchStatusException("Failed to execute multi-get request", RestStatus.INTERNAL_SERVER_ERROR, e)
+                )
+            ));
+            return future;
+        });
     }
 
     @Override

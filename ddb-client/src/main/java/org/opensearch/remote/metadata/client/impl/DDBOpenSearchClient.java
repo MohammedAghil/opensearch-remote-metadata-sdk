@@ -13,6 +13,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import org.opensearch.remote.metadata.client.MultiGetDataObjectRequest;
+import org.opensearch.remote.metadata.client.MultiGetDataObjectResponse;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProviderChain;
 import software.amazon.awssdk.auth.credentials.ContainerCredentialsProvider;
@@ -488,6 +490,11 @@ public class DDBOpenSearchClient extends AbstractSdkClient {
                 }
             );
         });
+    }
+
+    @Override
+    public CompletionStage<MultiGetDataObjectResponse> multiGetDataObjectAsync(MultiGetDataObjectRequest request, Executor executor, Boolean isMultiTenancyEnabled) {
+        throw new UnsupportedOperationException("Multi-get operation is currently not supported For DDB Client");
     }
 
     private CompletionStage<List<DataObjectResponse>> processBulkRequestsAsync(

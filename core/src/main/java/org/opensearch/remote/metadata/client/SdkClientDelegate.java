@@ -102,6 +102,20 @@ public interface SdkClientDelegate extends AutoCloseable {
     );
 
     /**
+     * Retrieve multiple data objects/documents from tables/indices.
+     *
+     * @param request  A request identifying the data objects to retrieve
+     * @param executor the executor to use for asynchronous execution
+     * @param isMultiTenancyEnabled whether multitenancy is enabled
+     * @return A completion stage encapsulating the response or exception
+     */
+    CompletionStage<MultiGetDataObjectResponse> multiGetDataObjectAsync(
+        MultiGetDataObjectRequest request,
+        Executor executor,
+        Boolean isMultiTenancyEnabled
+    );
+
+    /**
      * Search for data objects/documents in a table/index.
      *
      * @param request  A request identifying the data objects to search for

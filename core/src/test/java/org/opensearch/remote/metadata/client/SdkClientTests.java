@@ -68,6 +68,10 @@ public class SdkClientTests {
     @Mock
     private BulkDataObjectResponse bulkResponse;
     @Mock
+    private MultiGetDataObjectRequest multiGetRequest;
+    @Mock
+    private MultiGetDataObjectResponse multiGetResponse;
+    @Mock
     private SearchDataObjectRequest searchRequest;
     @Mock
     private SearchDataObjectResponse searchResponse;
@@ -137,6 +141,15 @@ public class SdkClientTests {
                 Boolean isMultiTenancyEnabled
             ) {
                 return CompletableFuture.completedFuture(searchResponse);
+            }
+
+            @Override
+            public CompletionStage<MultiGetDataObjectResponse> multiGetDataObjectAsync(
+                MultiGetDataObjectRequest request,
+                Executor executor,
+                Boolean isMultiTenancyEnabled
+            ) {
+                return CompletableFuture.completedFuture(multiGetResponse);
             }
 
             @Override
@@ -335,6 +348,12 @@ public class SdkClientTests {
         assertEquals(interruptedException, exception.getCause());
         assertTrue(Thread.interrupted());
         verify(sdkClientImpl).bulkDataObjectAsync(any(BulkDataObjectRequest.class), any(Executor.class), anyBoolean());
+    }
+
+    @Test
+    public void testMultiGetDataObjectSuccess() {
+        assertEquals(multiGetResponse, sdkClient.multiGetDataObject(multiGetRequest));
+        verify(sdkClientImpl).multiGetDataObjectAsync(any(MultiGetDataObjectRequest.class), any(Executor.class), anyBoolean());
     }
 
     @Test
