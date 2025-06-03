@@ -155,6 +155,12 @@ public class RemoteClusterIndicesClient extends AbstractSdkClient {
                 if (!Strings.isNullOrEmpty(request.id())) {
                     builder.id(request.id());
                 }
+                if (request.ifSeqNo() != null) {
+                    builder.ifSeqNo(request.ifSeqNo());
+                }
+                if (request.ifPrimaryTerm() != null) {
+                    builder.ifPrimaryTerm(request.ifPrimaryTerm());
+                }
                 IndexRequest<?> indexRequest = builder.build();
                 log.info("Indexing data object in {}", request.index());
                 return openSearchAsyncClient.index(indexRequest).thenApply(indexResponse -> {
@@ -411,6 +417,12 @@ public class RemoteClusterIndicesClient extends AbstractSdkClient {
                     .tDocumentSerializer(new JsonTransformer.XContentObjectJsonpSerializer());
                 if (!Strings.isNullOrEmpty(putRequest.id())) {
                     i.id(putRequest.id());
+                }
+                if (putRequest.ifSeqNo() != null) {
+                    i.ifSeqNo(putRequest.ifSeqNo());
+                }
+                if (putRequest.ifPrimaryTerm() != null) {
+                    i.ifPrimaryTerm(putRequest.ifPrimaryTerm());
                 }
                 return i;
             })));

@@ -129,6 +129,12 @@ public class LocalClusterIndicesClient extends AbstractSdkClient {
             if (!Strings.isNullOrEmpty(putDataObjectRequest.id())) {
                 indexRequest.id(putDataObjectRequest.id());
             }
+            if (putDataObjectRequest.ifSeqNo() != null) {
+                indexRequest.setIfSeqNo(putDataObjectRequest.ifSeqNo());
+            }
+            if (putDataObjectRequest.ifPrimaryTerm() != null) {
+                indexRequest.setIfPrimaryTerm(putDataObjectRequest.ifPrimaryTerm());
+            }
             return indexRequest;
         }
     }

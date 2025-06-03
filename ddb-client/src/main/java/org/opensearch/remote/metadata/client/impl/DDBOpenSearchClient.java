@@ -170,6 +170,12 @@ public class DDBOpenSearchClient extends AbstractSdkClient {
             IndexRequest indexRequest = new IndexRequest(request.index()).opType(request.overwriteIfExists() ? OpType.INDEX : OpType.CREATE)
                 .source(request.dataObject().toXContent(sourceBuilder, ToXContent.EMPTY_PARAMS));
             indexRequest.id(id);
+            if (request.ifSeqNo() != null) {
+                indexRequest.setIfSeqNo(request.ifSeqNo());
+            }
+            if (request.ifPrimaryTerm() != null) {
+                indexRequest.setIfPrimaryTerm(request.ifPrimaryTerm());
+            }
             ActionRequestValidationException validationException = indexRequest.validate();
             if (validationException != null) {
                 throw new OpenSearchStatusException(validationException.getMessage(), RestStatus.BAD_REQUEST);
@@ -184,6 +190,18 @@ public class DDBOpenSearchClient extends AbstractSdkClient {
         return doPrivileged(() -> dynamoDbAsyncClient.getItem(getItemRequest).thenCompose(getItemResponse -> {
             try {
                 Long sequenceNumber = initOrIncrementSeqNo(getItemResponse);
+
+                // Check sequence number and primary term if provided
+                if (request.ifSeqNo() != null
+                    && getItemResponse != null
+                    && getItemResponse.item() != null
+                    && getItemResponse.item().containsKey(SEQ_NO_KEY)) {
+                    Long currentSeqNo = Long.parseLong(getItemResponse.item().get(SEQ_NO_KEY).n());
+                    if (!currentSeqNo.equals(request.ifSeqNo())) {
+                        throw new OpenSearchStatusException("Document version conflict for ID: " + request.id(), RestStatus.CONFLICT);
+                    }
+                }
+
                 String source = Strings.toString(MediaTypeRegistry.JSON, request.dataObject());
                 JsonNode jsonNode = OBJECT_MAPPER.readTree(source);
                 Map<String, AttributeValue> sourceMap = DDBJsonTransformer.convertJsonObjectToDDBAttributeMap(jsonNode);
